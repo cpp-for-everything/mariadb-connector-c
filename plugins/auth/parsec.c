@@ -56,7 +56,7 @@ struct Passwd_in_memory
   uchar pub_key[ED25519_KEY_LENGTH];
 };
 
-static_assert(sizeof(struct Passwd_in_memory) == 2 + CHALLENGE_SALT_LENGTH
+_Static_assert(sizeof(struct Passwd_in_memory) == 2 + CHALLENGE_SALT_LENGTH
                                                    + ED25519_KEY_LENGTH,
               "Passwd_in_memory should be packed.");
 
@@ -71,7 +71,7 @@ struct Client_signed_response
   };
 };
 
-static_assert(sizeof(struct Client_signed_response) == CLIENT_RESPONSE_LENGTH,
+_Static_assert(sizeof(struct Client_signed_response) == CLIENT_RESPONSE_LENGTH,
               "Client_signed_response should be packed.");
 
 int compute_derived_key(const char* password, size_t pass_len,
@@ -165,7 +165,7 @@ static int auth(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
     };
     uchar start[1];
   } signed_msg;
-  static_assert(sizeof signed_msg == CHALLENGE_SCRAMBLE_LENGTH
+  _Static_assert(sizeof signed_msg == CHALLENGE_SCRAMBLE_LENGTH
                                      + sizeof(struct Client_signed_response),
                 "signed_msg should be packed.");
 
