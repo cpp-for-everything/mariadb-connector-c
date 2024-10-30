@@ -274,7 +274,7 @@ static struct _tls_version {
   const char *tls_version;
   DWORD protocol;
 } tls_version[]= {
-    {"TLSv1.0", PROT_TLS1_0},
+    {"TLSv1.0", 0},
     {"TLSv1.1", PROT_TLS1_1},
     {"TLSv1.2", PROT_TLS1_2},
     {"TLSv1.3", PROT_TLS1_3},
