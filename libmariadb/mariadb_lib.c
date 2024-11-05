@@ -1317,7 +1317,6 @@ mysql_init(MYSQL *mysql)
   mysql->extension->auto_local_infile= ENABLED_LOCAL_INFILE == LOCAL_INFILE_MODE_AUTO
                                        ? WAIT_FOR_QUERY : ALWAYS_ACCEPT;
   mysql->options.reconnect= 0;
-  mysql_optionsv(mysql, MARIADB_OPT_TLS_VERIFICATION_CALLBACK, ma_pvio_tls_verify_server_cert);
   return mysql;
 error:
   if (mysql->free_me)
@@ -1446,6 +1445,9 @@ mysql_real_connect(MYSQL *mysql, const char *host, const char *user,
   char *end= NULL;
   char *connection_handler= (mysql->options.extension) ?
                             mysql->options.extension->connection_handler : 0;
+
+  if (!mysql->options.extension || !mysql->options.extension->tls_verification_callback)
+    mysql_optionsv(mysql, MARIADB_OPT_TLS_VERIFICATION_CALLBACK, ma_pvio_tls_verify_server_cert);
 
   if ((client_flag & CLIENT_ALLOWED_FLAGS) != client_flag)
   {
