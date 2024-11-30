@@ -1662,7 +1662,7 @@ static int test_disable_tls1_0(MYSQL *my __attribute__((unused)))
   return OK;
 }
 
-static int test_null_handles(MYSQL *)
+static int test_null_handles(MYSQL *mysql __attribute__((unused)))
 {
   mysql_close(NULL);
   mysql_stmt_close(NULL);
