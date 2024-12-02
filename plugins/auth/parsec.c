@@ -87,10 +87,20 @@ int compute_derived_key(const char* password, size_t pass_len,
   struct hmac_sha512_ctx ctx;
   hmac_sha512_set_key(&ctx, pass_len, (const uint8_t *)password);
 
+  /*
+    pbkdf2/nettle functions are third party, so ignore the bad function casts
+  */
+# ifdef __clang__
+#  pragma clang diagnostic push
+#  pragma clang diagnostic ignored "-Wcast-function-type-strict"
+# endif
   pbkdf2(&ctx, (nettle_hash_update_func *)hmac_sha512_update,
          (nettle_hash_digest_func *)hmac_sha512_digest, SHA512_DIGEST_SIZE,
          1024 << params->iterations, CHALLENGE_SALT_LENGTH, params->salt,
          PBKDF2_HASH_LENGTH, derived_key);
+# ifdef __clang__
+#  pragma clang diagnostic pop
+# endif
 #elif defined(HAVE_SCHANNEL)
   BCRYPT_ALG_HANDLE algHdl;
   NTSTATUS status;
