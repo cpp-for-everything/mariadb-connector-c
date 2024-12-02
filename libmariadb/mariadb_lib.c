@@ -715,7 +715,8 @@ struct st_default_options mariadb_defaults[] =
 };
 
 #ifdef DEFAULT_SSL_VERIFY_SERVER_CERT
-#define FIX_SSL_VERIFY_SERVER_CERT(OPTS)
+#define FIX_SSL_VERIFY_SERVER_CERT(OPTS)\
+(OPTS)->extension->tls_allow_invalid_server_cert= (getenv("MARIADB_TLS_DISABLE_PEER_VERIFICATION") != NULL)
 #else
 #define FIX_SSL_VERIFY_SERVER_CERT(OPTS) (OPTS)->extension->tls_allow_invalid_server_cert=1
 #endif
