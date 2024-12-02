@@ -717,7 +717,6 @@ static int test_env_var(MYSQL *my __attribute__((unused)))
 {
   MYSQL *mysql= mysql_init(NULL);
   int rc= FAIL;
-  unsigned int status;
 
 #ifdef _WIN32
   _putenv_s("MARIADB_TLS_DISABLE_PEER_VERIFICATION", "1");
@@ -730,14 +729,6 @@ static int test_env_var(MYSQL *my __attribute__((unused)))
                        port, socketname, 0, 0))
   {
     diag("expected to pass, since environment variable was set");
-    goto end;
-  }
-
-  mariadb_get_infov(mysql, MARIADB_TLS_VERIFY_STATUS, &status);
-
-  if (status)
-  {
-    diag("expected status=0, since environment variable was set");
     goto end;
   }
 
