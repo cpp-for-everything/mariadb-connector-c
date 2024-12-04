@@ -102,7 +102,7 @@ int compute_derived_key(const char* password, size_t pass_len,
          (nettle_hash_digest_func *)hmac_sha512_digest, SHA512_DIGEST_SIZE,
          1024 << params->iterations, CHALLENGE_SALT_LENGTH, params->salt,
          PBKDF2_HASH_LENGTH, derived_key);
-# ifdef __clang__
+# if defined __clang_major__ && __clang_major__ >= 16
 #  pragma clang diagnostic pop
 # endif
 #elif defined(HAVE_SCHANNEL)
