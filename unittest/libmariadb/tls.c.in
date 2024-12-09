@@ -781,12 +781,40 @@ end:
   return rc;
 }
 
+static int test_cert_ip(MYSQL *my __attribute((unused)))
+{
+  char dummy_options[128];
+  MYSQL *mysql= mysql_init(NULL);
+
+  snprintf(dummy_options, 128, "CMD:create_new=True SAN='IP.1:%s'", tls_dummy_host);
+  if (set_tls_dummy_options(dummy_options))
+  {
+    diag("Error when setting TLS options");
+    return FAIL;
+  }
+  mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
+  set_verify(mysql, 1);
+  mysql_optionsv(mysql, MARIADB_OPT_TLS_VERIFICATION_CALLBACK, tls_abort_after_handshake);
+
+  if (!my_test_connect(mysql, tls_dummy_host, "tlsuser", "foo", NULL, tls_dummy_port, NULL, 0, 0))
+  {
+    CHECK_NO_TLS_FLAG(mysql, MARIADB_TLS_VERIFY_HOST, "Hostname verification didn't pass");
+    mysql_close(mysql);
+  } else {
+    mysql_close(mysql);
+    return FAIL;
+  }
+
+  return OK;
+}
+
 
 struct my_tests_st my_tests[] = {
   /* Don't add test above, test_init needs to be run first */
   {"test_start_tls_server", test_start_tls_server, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_init", test_init, TEST_CONNECTION_NONE, 0, NULL, NULL},
   /* Here you can add more tests */
+  {"test_cert_ip", test_cert_ip, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_fp_and_verify", test_fp_and_verify, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_env_var", test_env_var, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_cert_wildcard", test_cert_wildcard, TEST_CONNECTION_NEW, 0, NULL, NULL},
