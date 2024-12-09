@@ -27,6 +27,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #include "my_test.h"
 
+#define FORCE_RECONNECT(mysql) (mysql)->net.pvio= 0
+
 static int test_conc66(MYSQL *my)
 {
   MYSQL *mysql= mysql_init(NULL);
@@ -2442,7 +2444,52 @@ static int test_conc748(MYSQL *my __attribute__((unused)))
 }
 #endif
 
+static int test_conc589(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql= mysql_init(NULL);
+  MYSQL_RES *result;
+  int rc;
+  my_bool reconnect= 1;
+  unsigned long last_thread_id= 0;
+
+  mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
+
+  if (!my_test_connect(mysql, hostname, NULL,
+                             NULL, schema, port, socketname, CLIENT_REMEMBER_OPTIONS, 0))
+  {
+    diag("error: %s", mysql_error(mysql));
+    return FAIL;
+  }
+
+  FAIL_IF(mysql_thread_id(mysql) == last_thread_id, "Expected new connection id");
+  last_thread_id= mysql_thread_id(mysql);
+  if ((rc= mysql_query(mysql, "SELECT 1")) || (result= mysql_store_result(mysql)) == NULL)
+    check_mysql_rc(rc, mysql);
+  mysql_free_result(result);
+  FORCE_RECONNECT(mysql);
+  if ((rc= mysql_query(mysql, "SELECT 1")) || (result= mysql_store_result(mysql)) == NULL)
+    check_mysql_rc(rc, mysql);
+  mysql_free_result(result);
+  FAIL_IF(mysql_thread_id(mysql) == last_thread_id, "Expected new connection id");
+  last_thread_id= mysql_thread_id(mysql);
+  FORCE_RECONNECT(mysql);
+  if ((rc= mysql_query(mysql, "SELECT 1")) || (result= mysql_store_result(mysql)) == NULL)
+    check_mysql_rc(rc, mysql);
+  mysql_free_result(result);
+  FAIL_IF(mysql_thread_id(mysql) == last_thread_id, "Expected new connection id");
+  last_thread_id= mysql_thread_id(mysql);
+  FORCE_RECONNECT(mysql);
+  if ((rc= mysql_query(mysql, "SELECT 1")) || (result= mysql_store_result(mysql)) == NULL)
+    check_mysql_rc(rc, mysql);
+  mysql_free_result(result);
+  FAIL_IF(mysql_thread_id(mysql) == last_thread_id, "Expected new connection id");
+  last_thread_id= mysql_thread_id(mysql);
+  mysql_close(mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc589", test_conc589, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_tls_timeout", test_tls_timeout, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_parsec", test_parsec, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
 #if defined(HAVE_GNUTLS) || defined(HAVE_OPENSSL)
