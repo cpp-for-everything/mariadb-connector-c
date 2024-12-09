@@ -109,7 +109,7 @@ static my_bool ignore_self_signed_cert_error(MYSQL *mysql)
   return FALSE;
 }
 
-static my_bool tls_abort_after_handshake(MARIADB_TLS *ctls, unsigned int flags)
+static int tls_abort_after_handshake(MARIADB_TLS *ctls, unsigned int flags)
 {
   MYSQL *mysql= ctls->pvio->mysql;
 
@@ -210,6 +210,7 @@ static int set_tls_dummy_options(const char *options)
   }
 
   ma_pvio_close(pvio);
+  mysql_close(mysql);
   return OK;
 }
 
@@ -649,7 +650,7 @@ static int stop_tls_server(MYSQL *my __attribute__((unused)))
   return OK;
 }
 
-static my_bool tls_wildcard_callback(MARIADB_TLS *ctls, unsigned int flags)
+static int tls_wildcard_callback(MARIADB_TLS *ctls, unsigned int flags)
 {
   MYSQL *mysql= ctls->pvio->mysql;
   
@@ -837,6 +838,10 @@ struct my_tests_st my_tests[] = {
 int main(int argc, char **argv)
 {
   char *dummy_port;
+
+#ifdef HAVE_GNUTLS
+  diag("GnuTLS_config: %s", gnutls_get_system_config_file());
+#endif
 
   if (argc > 1)
     get_options(argc, argv);
