@@ -27,7 +27,13 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #include "my_test.h"
 
-#define FORCE_RECONNECT(mysql) (mysql)->net.pvio= 0
+
+static int kill_conn(MYSQL *mysql, unsigned long thread_id)
+{
+  char query[128];
+  sprintf(query, "KILL %ld", thread_id);
+  return mysql_query(mysql, query);
+}
 
 static int test_conc66(MYSQL *my)
 {
@@ -2444,7 +2450,7 @@ static int test_conc748(MYSQL *my __attribute__((unused)))
 }
 #endif
 
-static int test_conc589(MYSQL *my __attribute__((unused)))
+static int test_conc589(MYSQL *my)
 {
   MYSQL *mysql= mysql_init(NULL);
   MYSQL_RES *result;
@@ -2466,19 +2472,22 @@ static int test_conc589(MYSQL *my __attribute__((unused)))
   if ((rc= mysql_query(mysql, "SELECT 1")) || (result= mysql_store_result(mysql)) == NULL)
     check_mysql_rc(rc, mysql);
   mysql_free_result(result);
-  FORCE_RECONNECT(mysql);
+  rc= kill_conn(my, last_thread_id);
+  check_mysql_rc(rc, my);
   if ((rc= mysql_query(mysql, "SELECT 1")) || (result= mysql_store_result(mysql)) == NULL)
     check_mysql_rc(rc, mysql);
   mysql_free_result(result);
   FAIL_IF(mysql_thread_id(mysql) == last_thread_id, "Expected new connection id");
   last_thread_id= mysql_thread_id(mysql);
-  FORCE_RECONNECT(mysql);
+  rc= kill_conn(my, last_thread_id);
+  check_mysql_rc(rc, my);
   if ((rc= mysql_query(mysql, "SELECT 1")) || (result= mysql_store_result(mysql)) == NULL)
     check_mysql_rc(rc, mysql);
   mysql_free_result(result);
   FAIL_IF(mysql_thread_id(mysql) == last_thread_id, "Expected new connection id");
   last_thread_id= mysql_thread_id(mysql);
-  FORCE_RECONNECT(mysql);
+  rc= kill_conn(my, last_thread_id);
+  check_mysql_rc(rc, my);
   if ((rc= mysql_query(mysql, "SELECT 1")) || (result= mysql_store_result(mysql)) == NULL)
     check_mysql_rc(rc, mysql);
   mysql_free_result(result);
@@ -2489,7 +2498,7 @@ static int test_conc589(MYSQL *my __attribute__((unused)))
 }
 
 struct my_tests_st my_tests[] = {
-  {"test_conc589", test_conc589, TEST_CONNECTION_NONE, 0, NULL, NULL},
+  {"test_conc589", test_conc589, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_tls_timeout", test_tls_timeout, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_parsec", test_parsec, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
 #if defined(HAVE_GNUTLS) || defined(HAVE_OPENSSL)
