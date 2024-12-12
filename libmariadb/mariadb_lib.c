@@ -971,7 +971,7 @@ static MARIADB_CONST_STRING null_const_string= {0,0};
 /***************************************************************************
 ** Allocate a string copy on memroot
 ***************************************************************************/
-static MARIADB_CONST_STRING ma_const_string_copy_root(MA_MEM_ROOT *memroot,
+MARIADB_CONST_STRING ma_const_string_copy_root(MA_MEM_ROOT *memroot,
                                                       const char *str,
                                                       size_t length)
 {
