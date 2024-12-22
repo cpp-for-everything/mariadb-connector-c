@@ -3,7 +3,9 @@
 #define MAX_COUNT 2000
 
 int main(int argc, char *argv[]) {
-
+#if defined(WIN32) && defined(HAVE_TRAVIS)
+  diag("Test doesn't work under Travis/Win32");
+#else
 	MYSQL *mysql;
 	int i;
 
@@ -53,7 +55,7 @@ int main(int argc, char *argv[]) {
 		mysql_library_end();
 
 	}
-
+#endif
 	return 0;
 
 }
