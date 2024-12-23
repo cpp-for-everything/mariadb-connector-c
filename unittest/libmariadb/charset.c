@@ -547,6 +547,11 @@ static int test_bug30472(MYSQL *mysql)
     diag("Test requires MySQL Server version 5.1 or above");
     return SKIP;
   }
+  if (mariadb_connection(mysql) && mysql_get_server_version(mysql) >= 110400)
+  {
+    diag("C/C 3.3 doesn't support all collations from 11.4 and above");
+    return SKIP;
+  }
   /* Retrieve character set information. */
 
   mysql_set_character_set(mysql, "latin1");
