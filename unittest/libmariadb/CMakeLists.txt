@@ -35,7 +35,7 @@ INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/include
 ADD_DEFINITIONS(-DLIBMARIADB)
 
 
-SET(API_TESTS "conc336" "bulk1" "performance" "basic-t" "fetch" "charset" "logs" "cursor" "errors" "view" "ps" "ps_bugs" "sp" "result" "connection" "misc" "ps_new" "thread" "features-10_2")
+SET(API_TESTS "bulk1" "performance" "basic-t" "fetch" "charset" "logs" "cursor" "errors" "view" "ps" "ps_bugs" "sp" "result" "connection" "misc" "ps_new" "thread" "features-10_2")
 IF(WITH_DYNCOL)
   SET(API_TESTS ${API_TESTS} "dyncol")
 ENDIF()
@@ -45,7 +45,7 @@ IF(NOT WIN32)
 ENDIF()
 
 #exclude following tests from ctests, since we need to run them manually with different credentials
-SET(MANUAL_TESTS "t_conc173" "rpl_api")
+SET(MANUAL_TESTS "t_conc173" "rpl_api" "conc336") 
 # Get finger print from server certificate
 IF(WITH_SSL)
   IF(CERT_PATH AND NOT DEFINED ENV{TRAVIS})

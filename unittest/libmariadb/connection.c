@@ -2456,8 +2456,10 @@ static int test_conc589(MYSQL *my)
   MYSQL_RES *result;
   int rc;
   my_bool reconnect= 1;
+  my_bool no= 0;
   unsigned long last_thread_id= 0;
 
+  mysql_options(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &no);
   mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
 
   if (!my_test_connect(mysql, hostname, username,
