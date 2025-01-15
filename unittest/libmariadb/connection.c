@@ -27,6 +27,14 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #include "my_test.h"
 
+
+static int kill_conn(MYSQL *mysql, unsigned long thread_id)
+{
+  char query[128];
+  sprintf(query, "KILL %ld", thread_id);
+  return mysql_query(mysql, query);
+}
+
 static int test_conc66(MYSQL *my)
 {
   MYSQL *mysql= mysql_init(NULL);
@@ -1081,7 +1089,7 @@ static int test_unix_socket_close(MYSQL *unused __attribute__((unused)))
 
   for (i=0; i < 10000; i++)
   {
-    my_test_connect(mysql, "localhost", "user", "passwd", NULL, 0, "./dummy_sock", 0, 1);
+    mysql_real_connect(mysql, "localhost", "user", "passwd", NULL, 0, "./dummy_sock", 0);
     /* check if we run out of sockets */
     if (mysql_errno(mysql) == 2001)
     {
@@ -2370,6 +2378,9 @@ static int test_parsec(MYSQL *my)
   rc= mysql_query(my, "DROP USER test1@'%'");
   check_mysql_rc(rc, my);
 
+  rc= mysql_query(my, "UNINSTALL soname IF EXISTS 'auth_parsec'");
+  check_mysql_rc(rc, my);
+
   mysql_close(mysql);
   return OK;
 }
@@ -2407,9 +2418,92 @@ int test_tls_timeout(MYSQL *unused __attribute__((unused)))
 }
 
 
+#if defined(HAVE_GNUTLS) || defined(HAVE_OPENSSL)
+static int test_conc748(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql;
+  int i;
+  const char *ciphers[3]= {"TLS_AES_128_GCM_SHA256", "TLS_AES_256_GCM_SHA384", "TLS_CHACHA20_POLY1305_SHA256"};
+
+  for (i=0; i < 3; i++)
+  {
+    const char *tls_version;
+    mysql= mysql_init(NULL);
+
+    mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
+    mysql_optionsv(mysql, MYSQL_OPT_SSL_CIPHER, ciphers[i]);
+
+    if (!my_test_connect(mysql, hostname, username,
+                         password, schema, port, socketname, 0, 0))
+    {
+      diag("error: %s", mysql_error(mysql));
+      return FAIL;
+    }
+
+    FAIL_IF(strcmp(ciphers[i], mysql_get_ssl_cipher(mysql)), "Cipher mismatch");
+    mariadb_get_infov(mysql, MARIADB_CONNECTION_TLS_VERSION, &tls_version);
+    FAIL_IF(strcmp(tls_version, "TLSv1.3"), "TLS version mismatch");
+
+    mysql_close(mysql);
+  }
+  return OK;
+}
+#endif
+
+static int test_conc589(MYSQL *my)
+{
+  MYSQL *mysql= mysql_init(NULL);
+  MYSQL_RES *result;
+  int rc;
+  my_bool reconnect= 1;
+  unsigned long last_thread_id= 0;
+
+  mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
+
+  if (!my_test_connect(mysql, hostname, username,
+                       password, schema, port, socketname, CLIENT_REMEMBER_OPTIONS, 0))
+  {
+    diag("error: %s", mysql_error(mysql));
+    return FAIL;
+  }
+
+  FAIL_IF(mysql_thread_id(mysql) == last_thread_id, "Expected new connection id");
+  last_thread_id= mysql_thread_id(mysql);
+  if ((rc= mysql_query(mysql, "SELECT 1")) || (result= mysql_store_result(mysql)) == NULL)
+    check_mysql_rc(rc, mysql);
+  mysql_free_result(result);
+  rc= kill_conn(my, last_thread_id);
+  check_mysql_rc(rc, my);
+  if ((rc= mysql_query(mysql, "SELECT 1")) || (result= mysql_store_result(mysql)) == NULL)
+    check_mysql_rc(rc, mysql);
+  mysql_free_result(result);
+  FAIL_IF(mysql_thread_id(mysql) == last_thread_id, "Expected new connection id");
+  last_thread_id= mysql_thread_id(mysql);
+  rc= kill_conn(my, last_thread_id);
+  check_mysql_rc(rc, my);
+  if ((rc= mysql_query(mysql, "SELECT 1")) || (result= mysql_store_result(mysql)) == NULL)
+    check_mysql_rc(rc, mysql);
+  mysql_free_result(result);
+  FAIL_IF(mysql_thread_id(mysql) == last_thread_id, "Expected new connection id");
+  last_thread_id= mysql_thread_id(mysql);
+  rc= kill_conn(my, last_thread_id);
+  check_mysql_rc(rc, my);
+  if ((rc= mysql_query(mysql, "SELECT 1")) || (result= mysql_store_result(mysql)) == NULL)
+    check_mysql_rc(rc, mysql);
+  mysql_free_result(result);
+  FAIL_IF(mysql_thread_id(mysql) == last_thread_id, "Expected new connection id");
+  last_thread_id= mysql_thread_id(mysql);
+  mysql_close(mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc589", test_conc589, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_tls_timeout", test_tls_timeout, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_parsec", test_parsec, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
+#if defined(HAVE_GNUTLS) || defined(HAVE_OPENSSL)
+  {"test_conc748", test_conc748, TEST_CONNECTION_NONE, 0, NULL, NULL},
+#endif
   {"test_conc505", test_conc505, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc632", test_conc632, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_status_callback", test_status_callback, TEST_CONNECTION_NONE, 0, NULL, NULL},
