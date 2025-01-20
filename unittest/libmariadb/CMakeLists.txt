@@ -34,8 +34,12 @@ INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/include
                     ${CC_SOURCE_DIR}/unittest/libmariadb)
 ADD_DEFINITIONS(-DLIBMARIADB)
 
-
 SET(API_TESTS "bulk1" "performance" "basic-t" "fetch" "charset" "logs" "cursor" "errors" "view" "ps" "ps_bugs" "sp" "result" "connection" "misc" "ps_new" "thread" "features-10_2")
+
+IF($ENV{TRAVIS})
+  ADD_DEFINITIONS("-DHAVE_TRAVIS=1")
+ENDIF()
+
 IF(WITH_DYNCOL)
   SET(API_TESTS ${API_TESTS} "dyncol")
 ENDIF()
