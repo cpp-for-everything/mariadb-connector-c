@@ -27,14 +27,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #include "my_test.h"
 
-
-static int kill_conn(MYSQL *mysql, unsigned long thread_id)
-{
-  char query[128];
-  sprintf(query, "KILL %ld", thread_id);
-  return mysql_query(mysql, query);
-}
-
 static int test_conc66(MYSQL *my)
 {
   MYSQL *mysql= mysql_init(NULL);
@@ -2425,6 +2417,8 @@ static int test_conc748(MYSQL *my __attribute__((unused)))
   int i;
   const char *ciphers[3]= {"TLS_AES_128_GCM_SHA256", "TLS_AES_256_GCM_SHA384", "TLS_CHACHA20_POLY1305_SHA256"};
 
+  SKIP_MAXSCALE;
+
   for (i=0; i < 3; i++)
   {
     const char *tls_version;
@@ -2455,12 +2449,13 @@ static int test_conc589(MYSQL *my)
   MYSQL *mysql= mysql_init(NULL);
   MYSQL_RES *result;
   int rc;
-  my_bool reconnect= 1;
-  my_bool no= 0;
+  my_bool reconnect= 1, verify= 0;
   unsigned long last_thread_id= 0;
 
-  mysql_options(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &no);
+  SKIP_MAXSCALE;
+
   mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
+  mysql_options(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify);
 
   if (!my_test_connect(mysql, hostname, username,
                        password, schema, port, socketname, CLIENT_REMEMBER_OPTIONS, 0))
@@ -2469,32 +2464,30 @@ static int test_conc589(MYSQL *my)
     return FAIL;
   }
 
-  FAIL_IF(mysql_thread_id(mysql) == last_thread_id, "Expected new connection id");
+  rc= mysql_query(mysql, "SET SESSION wait_timeout=5");
+  check_mysql_rc(rc, mysql);
+
   last_thread_id= mysql_thread_id(mysql);
   if ((rc= mysql_query(mysql, "SELECT 1")) || (result= mysql_store_result(mysql)) == NULL)
     check_mysql_rc(rc, mysql);
+
   mysql_free_result(result);
-  rc= kill_conn(my, last_thread_id);
-  check_mysql_rc(rc, my);
-  if ((rc= mysql_query(mysql, "SELECT 1")) || (result= mysql_store_result(mysql)) == NULL)
-    check_mysql_rc(rc, mysql);
-  mysql_free_result(result);
-  FAIL_IF(mysql_thread_id(mysql) == last_thread_id, "Expected new connection id");
-  last_thread_id= mysql_thread_id(mysql);
-  rc= kill_conn(my, last_thread_id);
-  check_mysql_rc(rc, my);
-  if ((rc= mysql_query(mysql, "SELECT 1")) || (result= mysql_store_result(mysql)) == NULL)
+  sleep(10);
+
+  if ((rc= mysql_query(mysql, "SELECT 2")) || (result= mysql_store_result(mysql)) == NULL)
     check_mysql_rc(rc, mysql);
   mysql_free_result(result);
   FAIL_IF(mysql_thread_id(mysql) == last_thread_id, "Expected new connection id");
   last_thread_id= mysql_thread_id(mysql);
-  rc= kill_conn(my, last_thread_id);
-  check_mysql_rc(rc, my);
-  if ((rc= mysql_query(mysql, "SELECT 1")) || (result= mysql_store_result(mysql)) == NULL)
+
+  mysql_kill(my, last_thread_id);
+
+  sleep(10);
+
+  if ((rc= mysql_query(mysql, "SELECT 3")) || (result= mysql_store_result(mysql)) == NULL)
     check_mysql_rc(rc, mysql);
   mysql_free_result(result);
   FAIL_IF(mysql_thread_id(mysql) == last_thread_id, "Expected new connection id");
-  last_thread_id= mysql_thread_id(mysql);
   mysql_close(mysql);
   return OK;
 }
