@@ -80,7 +80,7 @@
 #define strncasecmp _strnicmp
 #endif
 
-#define ASYNC_CONTEXT_DEFAULT_STACK_SIZE (4096*15)
+#define ASYNC_CONTEXT_DEFAULT_STACK_SIZE (256*1024)
 #define MA_RPL_VERSION_HACK "5.5.5-"
 
 #define CHARSET_NAME_LEN 64
@@ -272,6 +272,11 @@ restart:
         }
         ma_strmake(net->last_error,(char*) pos,
                 min(len,sizeof(net->last_error)-1));
+      }
+      /* MDEV-35935: if server sends error packet without error, we have to
+         set error manually */
+      if (!net->last_errno) {
+        my_set_error(mysql, CR_ERR_MISSING_ERROR_INFO, SQLSTATE_UNKNOWN, 0);
       }
     }
     else
