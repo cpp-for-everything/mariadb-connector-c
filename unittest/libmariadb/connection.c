@@ -2535,7 +2535,7 @@ static int test_conc760(MYSQL *my)
   mysql_options(mysql, MYSQL_OPT_PROTOCOL, &protocol);
 
   if (!my_test_connect(mysql, hostname, username,
-                       password, schema, port, named_pipe_name, CLIENT_REMEMBER_OPTIONS))
+                       password, schema, port, named_pipe_name, CLIENT_REMEMBER_OPTIONS, 0))
   {
     diag("error: %s", mysql_error(mysql));
     return FAIL;
