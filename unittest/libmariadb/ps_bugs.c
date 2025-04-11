@@ -2677,11 +2677,19 @@ static int test_bug5194(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   my_bind= (MYSQL_BIND*) malloc(MAX_PARAM_COUNT * sizeof(MYSQL_BIND));
+  FAIL_UNLESS(my_bind, "Not enough memory");
   query= (char*) malloc(strlen(query_template) +
                         MAX_PARAM_COUNT * CHARS_PER_PARAM + 1);
+  if(!query)
+    free(my_bind);
+  FAIL_UNLESS(query, "Not enough memory");
   param_str= (char*) malloc(COLUMN_COUNT * CHARS_PER_PARAM);
-
-  FAIL_IF(my_bind == 0 || query == 0 || param_str == 0, "Not enough memory");
+  if(!param_str)
+  {
+    free(my_bind);
+    free(query);
+  }
+  FAIL_UNLESS(param_str, "Not enough memory");
 
   stmt= mysql_stmt_init(mysql);
 
