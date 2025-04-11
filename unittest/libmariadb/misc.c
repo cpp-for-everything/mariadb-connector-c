@@ -292,18 +292,26 @@ static int test_frm_bug(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   result= mysql_store_result(mysql);
+  if(!result)
+    fclose(test_file);
   FAIL_IF(!result, "Invalid result set");/* It can't be NULL */
 
   rc= 0;
   while (mysql_fetch_row(result))
     rc++;
+  if(rc != 1)
+    fclose(test_file);
   FAIL_UNLESS(rc == 1, "rowcount != 1");
 
   mysql_data_seek(result, 0);
 
   row= mysql_fetch_row(result);
+  if(!row)
+    fclose(test_file);
   FAIL_IF(!row, "couldn't fetch row");
 
+  if(row[17] != 0)
+    fclose(test_file);
   FAIL_UNLESS(row[17] != 0, "row[17] != 0");
 
   mysql_free_result(result);
