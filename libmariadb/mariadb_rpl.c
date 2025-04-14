@@ -1982,6 +1982,12 @@ int STDCALL mariadb_rpl_optionsv(MARIADB_RPL *rpl,
     else if (arg1)
     {
       rpl->filename= strdup((const char *)arg1);
+      if (!rpl->filename)
+      {
+        va_end(ap);
+        rpl_set_error(rpl, CR_OUT_OF_MEMORY, 0);
+        return 1;
+      }
       rpl->filename_length= (uint32_t)strlen(rpl->filename);
     }
     break;
