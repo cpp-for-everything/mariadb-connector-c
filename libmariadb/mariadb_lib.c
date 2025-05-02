@@ -519,13 +519,6 @@ int ma_multi_command(MYSQL *mysql, enum enum_multi_status status)
     return 0;
   case COM_MULTI_END:
   {
-    size_t len= net->write_pos - net->buff - NET_HEADER_SIZE;
-
-    if (len < NET_HEADER_SIZE) /* don't send empty request */
-    {
-      ma_net_clear(net);
-      return 1;
-    }
     net->extension->multi_status= COM_MULTI_OFF;
     return ma_net_flush(net);
   }
