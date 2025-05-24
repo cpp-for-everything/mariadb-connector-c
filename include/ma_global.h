@@ -485,9 +485,11 @@ extern double		my_atof(const char*);
 #if defined(_lint) || defined(FORCE_INIT_OF_VARS) || \
     defined(__cplusplus) || !defined(__GNUC__)
 #define UNINIT_VAR(x) x= 0
-#else
+#elif defined(__GNUC__) && !defined(__clang__)
 /* GCC specific self-initialization which inhibits the warning. */
 #define UNINIT_VAR(x) x= x
+#else
+#define UNINIT_VAR(x) x
 #endif
 
 
