@@ -5164,6 +5164,7 @@ static int test_maxparam(MYSQL *mysql)
   MYSQL_BIND* bind;
 
   bind = calloc(65535, sizeof *bind);
+  FAIL_UNLESS(bind, "Not enough memory");
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
   check_mysql_rc(rc, mysql);
