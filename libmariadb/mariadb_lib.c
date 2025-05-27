@@ -1357,7 +1357,11 @@ mysql_init(MYSQL *mysql)
   return mysql;
 error:
   if (mysql->free_me)
+  {
+    if (mysql->net.extension)
+      free(mysql->net.extension);
     free(mysql);
+  }
   return 0;
 }
 
