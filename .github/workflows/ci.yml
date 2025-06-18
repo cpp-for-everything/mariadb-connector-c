@@ -143,10 +143,6 @@ jobs:
           registry-password: ${{ matrix.db-type == 'enterprise' && secrets.ENTERPRISE_TOKEN || secrets.DOCKER_PWD }}
           os: ${{ matrix.os }}
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node }}
-
       - name: make ubuntu/macos
         if: ${{ !startsWith(matrix.os, 'windows') }}
         run: |
