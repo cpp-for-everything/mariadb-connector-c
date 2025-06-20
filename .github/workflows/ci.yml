@@ -124,7 +124,7 @@ jobs:
       matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
 
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.continue-on-error || false }}
+    continue-on-error: ${{ matrix.continue-on-error || matrix.os == 'macos-latest' }}
     steps:
       - uses: actions/checkout@v4
 
