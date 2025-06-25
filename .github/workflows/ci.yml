@@ -40,8 +40,8 @@ jobs:
     strategy:
       matrix:
         server:
-          - version: '11.4'
-          - version: '11.8'
+          - version: '10.6'
+          - version: '10.11'
             env: TEST_OPTION=--ps-protocol
     steps:
       - name: Retrieve server ${{ matrix.server.version }}
