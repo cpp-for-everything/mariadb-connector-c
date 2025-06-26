@@ -150,8 +150,22 @@ jobs:
       - name: make windows
         if: ${{ startsWith(matrix.os, 'windows') }}
         run: |
-          cmake . -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWITH_CURL=ON
+          cmake . -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWITH_CURL=ON -DWITH_MSI=ON
           cmake --build . --config RelWithDebInfo
+
+      - name: install windows
+        if: ${{ startsWith(matrix.os, 'windows') }}
+        run: |
+          $msiPackage = Get-ChildItem -Path ".\win\packaging\" -Filter "*.msi" | Select-Object -ExpandProperty FullName
+          if ($msiPackage.Count -gt 1) {
+            Write-Error "Found more than one MSI package. Please ensure only one MSI exists in the directory."
+            exit 1
+          }
+          if (-not $msiPackage) {
+            Write-Error "No MSI package found in .\win\packaging\"
+            exit 1
+          }
+          Write-Host "Found MSI: $msiPackage"
 
       - name: Run test suite
         shell: bash
