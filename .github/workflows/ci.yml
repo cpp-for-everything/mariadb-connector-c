@@ -165,7 +165,18 @@ jobs:
             Write-Error "No MSI package found in .\win\packaging\"
             exit 1
           }
-          Write-Host "Found MSI: $msiPackage"
+          Write-Host "Installing MSI: $msiPackage"
+          $logPath = Join-Path -Path (Get-Location) -ChildPath "install.log"
+
+          $process = Start-Process "msiexec" -ArgumentList "/i `"$msiPackage`" /qn /l*v `"$logPath`"" -NoNewWindow -PassThru -Wait
+
+          if ($process.ExitCode -ne 0) {
+            Write-Error "MSI installation failed with exit code $($process.ExitCode)"
+            Get-Content $logPath
+            exit 1
+          } else {
+            Write-Host "MSI installed successfully."
+          }
 
       - name: Run test suite
         shell: bash
