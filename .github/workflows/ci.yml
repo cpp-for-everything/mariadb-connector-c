@@ -150,13 +150,13 @@ jobs:
       - name: make windows 64bits
         if: ${{ startsWith(matrix.os, 'windows') && (matrix.arch != '32' || !matrix.arch) }}
         run: |
-          cmake . -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWITH_CURL=ON
+          cmake . -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWITH_CURL=ON -DWITH_MSI=ON
           cmake --build . --config RelWithDebInfo
 
       - name: make windows 32bits
         if: ${{ startsWith(matrix.os, 'windows') && startsWith(matrix.arch, '32') }}
         run: |
-          cmake -A Win32 . -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWITH_CURL=ON
+          cmake -A Win32 . -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWITH_CURL=ON -DWITH_MSI=ON
           cmake --build . --config RelWithDebInfo
 
       - name: Run test suite
