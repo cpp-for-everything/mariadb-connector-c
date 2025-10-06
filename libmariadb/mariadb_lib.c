@@ -168,6 +168,18 @@ my_bool ma_check_buffer_boundaries(MYSQL *mysql, uchar *current_pos,
   return 0;
 }
 
+my_bool ma_is_ip_address(const char *s)
+{
+  struct in_addr  v4;
+  struct in6_addr v6;
+
+  if (inet_pton(AF_INET, s, &v4) == 1 ||
+      inet_pton(AF_INET6, s, &v6) == 1)
+    return 1;
+
+  return 0;
+}
+
 /* net_get_error */
 void net_get_error(char *buf, size_t buf_len,
        char *error, size_t error_len,
