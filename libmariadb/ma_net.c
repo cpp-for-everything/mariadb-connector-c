@@ -80,7 +80,6 @@ ulong net_buffer_length= 8192;	/* Default length. Enlarged if necessary */
 
 int ma_net_write_buff(NET *net,const char *packet, size_t len);
 
-
 /* Init with packet info */
 
 int ma_net_init(NET *net, MARIADB_PVIO* pvio)
