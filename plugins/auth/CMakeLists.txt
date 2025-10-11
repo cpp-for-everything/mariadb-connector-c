@@ -91,7 +91,7 @@ IF(CRYPTO_PLUGIN)
   REGISTER_PLUGIN(TARGET caching_sha2_password
                 TYPE AUTH
                 CONFIGURATIONS DYNAMIC STATIC OFF
-                DEFAULT DYNAMIC
+                DEFAULT STATIC
                 SOURCES ${AUTH_DIR}/caching_sha2_pw.c
                         ${CRYPT_SOURCE}
                 LIBRARIES ${CRYPT_LIBS})
