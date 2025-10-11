@@ -47,11 +47,21 @@
 #include <openssl/err.h>
 #elif defined(HAVE_GNUTLS)
 #include <gnutls/gnutls.h>
+#include <gnutls/abstract.h>
+
+#define MAX_RSA_KEY_SIZE 512
+
 #elif defined(HAVE_WINCRYPT)
 #include <windows.h>
 #include <wincrypt.h>
 #include <bcrypt.h>
 
+#endif
+
+#ifndef HAVE_GNUTLS
+#define HAVE_RSA_OAEP 1
+#elif GNUTLS_VERSION_NUMBER >= 0x030804
+#define HAVE_RSA_OAEP 1
 #endif
 
 #include <ma_crypt.h>
@@ -181,7 +191,7 @@ end:
 }
 #endif
 
-#ifndef HAVE_GNUTLS
+#if defined(HAVE_RSA_OAEP) 
 static char *load_pub_key_file(const char *filename, int *pub_key_size)
 {
   FILE *fp= NULL;
@@ -227,9 +237,9 @@ static int auth_caching_sha2_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   unsigned char *packet;
   int packet_length;
   int rc= CR_ERROR;
-#if !defined(HAVE_GNUTLS)
+#ifdef HAVE_RSA_OAEP
   char passwd[MAX_PW_LEN];
-#ifdef HAVE_OPENSSL
+#if defined(HAVE_OPENSSL) || defined(HAVE_GNUTLS)
   unsigned char *rsa_enc_pw= NULL;
   size_t rsa_size;
 #else
@@ -241,11 +251,15 @@ static int auth_caching_sha2_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 #endif
   unsigned char buf[MA_SHA256_HASH_SIZE];
 
+#ifdef HAVE_RSA_OAEP
 #if defined(HAVE_OPENSSL)
   EVP_PKEY *pubkey= NULL;
   EVP_PKEY_CTX *ctx= NULL;
   BIO *bio;
   size_t outlen;
+#elif defined(HAVE_GNUTLS)
+  gnutls_pubkey_t pubkey= NULL;
+  gnutls_datum_t pk_data, in_datum, out_datum;
 #elif defined(HAVE_WINCRYPT)
   BCRYPT_KEY_HANDLE pubkey= 0;
   BCRYPT_OAEP_PADDING_INFO paddingInfo;
@@ -253,6 +267,7 @@ static int auth_caching_sha2_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   DWORD der_buffer_len= 0;
   CERT_PUBLIC_KEY_INFO *publicKeyInfo= NULL;
   DWORD publicKeyInfoLen;
+#endif
 #endif
 
   /* read error */
@@ -300,9 +315,9 @@ static int auth_caching_sha2_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 
   if (!is_connection_secure(mysql))
   {
-#if defined(HAVE_GNUTLS)
+#if defined(HAVE_GNUTLS) && !defined(HAVE_RSA_OAEP)
      mysql->methods->set_error(mysql, CR_AUTH_PLUGIN_ERR, "HY000", 
-                               "RSA Encryption not supported - caching_sha2_password plugin was built with GnuTLS support");
+                               "RSA Encryption not supported - caching_sha2_password plugin was built with GnuTLS version < 3.8.4");
      return CR_ERROR;
 #else
     /* read public key file (if specified) */
@@ -340,6 +355,20 @@ static int auth_caching_sha2_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
     BIO_free(bio);
     bio= NULL;
     ERR_clear_error();
+#elif defined(HAVE_GNUTLS)
+    if (gnutls_pubkey_init(&pubkey) < 0)
+      goto error;
+
+    /* Load PEM data into gnutls_datum_t structure */
+    pk_data.data= filebuffer ? (unsigned char *)filebuffer : packet;
+    pk_data.size= (unsigned int)packet_length;
+
+    if (gnutls_pubkey_import(pubkey, &pk_data, GNUTLS_X509_FMT_PEM) < 0)
+    {
+      mysql->methods->set_error(mysql, CR_AUTH_PLUGIN_ERR, "HY000",
+                               "Couldn't import RSA public key with GnuTLS");
+      goto error;
+    }
 #elif defined(HAVE_WINCRYPT)
     der_buffer_len= packet_length;
     /* Load pem and convert it to binary object. New length will be returned
@@ -385,6 +414,25 @@ static int auth_caching_sha2_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
       goto error;
     if (EVP_PKEY_encrypt(ctx, rsa_enc_pw, &outlen, (unsigned char *)passwd, pwlen) <= 0)
       goto error;
+#elif defined(HAVE_GNUTLS)
+    rsa_size= MAX_RSA_KEY_SIZE;
+    if (!(rsa_enc_pw= (unsigned char *)malloc(rsa_size)))
+      goto error;
+
+    /* Encrypt scrambled password using RSA-OAEP with SHA256 */
+    in_datum.data = (unsigned char *)passwd;
+    in_datum.size= pwlen;
+    out_datum.data = rsa_enc_pw;
+    out_datum.size = rsa_size;
+
+    if (gnutls_pubkey_encrypt_data(pubkey, GNUTLS_PK_RSA_OAEP,
+                                   &in_datum, &out_datum) < 0)
+    {
+      mysql->methods->set_error(mysql, CR_AUTH_PLUGIN_ERR, "HY000", "GnuTLS RSA encryption failed");
+      goto error;
+    }
+    printf("out_datum.size: %d\n", out_datum.size);
+    rsa_size= out_datum.size; /* Update size to actual encrypted size */
 #elif defined(HAVE_WINCRYPT)
     ZeroMemory(&paddingInfo, sizeof(paddingInfo));
     paddingInfo.pszAlgId = BCRYPT_SHA1_ALGORITHM;
@@ -405,7 +453,7 @@ static int auth_caching_sha2_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
       return CR_ERROR;
     return CR_OK;
   }
-#if !defined(HAVE_GNUTLS)
+#if defined(HAVE_RSA_OAEP)
 error:
 #if defined(HAVE_OPENSSL)
   if (pubkey)
@@ -416,6 +464,11 @@ error:
     BIO_free(bio);
   if (ctx)
     EVP_PKEY_CTX_free(ctx);
+#elif defined(HAVE_GNUTLS)
+  if (pubkey)
+    gnutls_pubkey_deinit(pubkey);
+  if (rsa_enc_pw)
+    free(rsa_enc_pw);
 #elif defined(HAVE_WINCRYPT)
   if (pubkey)
     BCryptDestroyKey(pubkey);
