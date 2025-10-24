@@ -2205,6 +2205,11 @@ my_bool STDCALL mariadb_reconnect(MYSQL *mysql)
   ma_net_clear(&mysql->net);
   mysql->affected_rows= ~(unsigned long long) 0;
   mysql->info= 0;
+
+  /* inform client application about reconnect */
+  mysql->options.extension->status_callback(mysql->options.extension->status_data,
+                                            CLIENT_EVENT_TYPE, CLIENT_RECONNECT);
+
   return(0);
 }
 
@@ -2302,6 +2307,12 @@ my_bool	STDCALL mysql_change_user(MYSQL *mysql, const char *user,
     mysql->db= s_db;
     mysql->charset= s_cs;
   }
+
+  /* inform client application about user change */
+  if (!rc)
+    mysql->options.extension->status_callback(mysql->options.extension->status_data,
+                                              CLIENT_EVENT_TYPE, CLIENT_CHANGE_USER);
+
   return(rc);
 }
 
@@ -2571,7 +2582,7 @@ void ma_save_session_track_info(void *ptr, enum enum_mariadb_status_info type, .
 
   va_start(ap, type);
 
-  track_type= va_arg(ap, enum enum_session_state_type);
+  track_type= va_arg_enum(ap, enum enum_session_state_type);
 
   switch (track_type) {
   case SESSION_TRACK_SCHEMA:

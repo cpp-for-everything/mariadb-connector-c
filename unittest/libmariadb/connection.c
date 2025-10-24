@@ -2197,6 +2197,8 @@ static int test_conc365_reconnect(MYSQL *my)
 
 struct st_callback {
   char autocommit;
+  char reconnect;
+  char change_user;
   char database[64];
   char charset[64];
 };
@@ -2208,6 +2210,13 @@ void my_status_callback(void *ptr, enum enum_mariadb_status_info type, ...)
   va_start(ap, type);
 
   switch(type) {
+  case CLIENT_EVENT_TYPE:
+    {
+      int status= va_arg_enum(ap, enum enum_client_info_type);
+      data->reconnect= (status == CLIENT_RECONNECT);
+      data->change_user= (status == CLIENT_CHANGE_USER);
+    }
+    break;
   case STATUS_TYPE:
     {
       int status= va_arg(ap, int);
@@ -2252,9 +2261,12 @@ static int test_status_callback(MYSQL *my __attribute__((unused)))
   MYSQL *mysql= mysql_init(NULL);
   char tmp[64];
   int rc;
-  struct st_callback data= {0,"", ""};
+  char reconnect= 1;
+  char query[1024];
+  struct st_callback data= {0, 0, 0,"", ""};
 
   rc= mysql_optionsv(mysql, MARIADB_OPT_STATUS_CALLBACK, my_status_callback, &data);
+  rc= mysql_optionsv(mysql, MYSQL_OPT_RECONNECT, &reconnect);
 
   if (!my_test_connect(mysql, hostname, username,
                       password, NULL, port, socketname, 0, 1))
@@ -2262,6 +2274,57 @@ static int test_status_callback(MYSQL *my __attribute__((unused)))
     diag("error1: %s", mysql_error(mysql));
     return FAIL;
   }
+
+  /* Check reconnect */
+  rc= mysql_query(mysql, "SET session wait_timeout=2");
+  check_mysql_rc(rc, mysql);
+
+  sleep(5);
+
+  rc= mysql_query(mysql, "SET @a:=1");
+  check_mysql_rc(rc, mysql);
+
+  if (!data.reconnect)
+  {
+    diag("reconnect not set");
+    return FAIL;
+  }
+
+  sprintf(query, "DROP USER IF EXISTS 'foo'@'%s'", this_host);
+  rc= mysql_query(mysql, query);
+  check_mysql_rc(rc, mysql);
+
+  sprintf(query, "CREATE USER 'foo'@'%s' IDENTIFIED BY 'foo'", this_host);
+  rc= mysql_query(mysql, query);
+  check_mysql_rc(rc, mysql);
+
+  sprintf(query, "GRANT ALL ON %s.* TO 'foo'@'%s'", schema, this_host);
+  rc= mysql_query(mysql, query);
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_change_user(mysql, "foo", "foo", schema);
+  check_mysql_rc(rc, mysql);
+
+  if (!data.change_user)
+  {
+    diag("change_user not set");
+    return FAIL;
+  }
+
+  data.change_user= 0;
+
+  rc= mysql_change_user(mysql, username, password, schema);
+  check_mysql_rc(rc, mysql);
+
+  if (!data.change_user)
+  {
+    diag("change_user not set");
+    return FAIL;
+  }
+
+  sprintf(query, "DROP USER 'foo'@'%s'", this_host);
+  rc= mysql_query(mysql, query);
+  check_mysql_rc(rc, mysql);
 
   rc= mysql_autocommit(mysql, 0);
   check_mysql_rc(rc, mysql);

@@ -325,7 +325,14 @@ enum enum_mysql_set_option
 enum enum_mariadb_status_info
 {
   STATUS_TYPE= 0,
-  SESSION_TRACK_TYPE
+  SESSION_TRACK_TYPE,
+  CLIENT_EVENT_TYPE
+};
+
+enum enum_client_info_type
+{
+  CLIENT_RECONNECT = 0,
+  CLIENT_CHANGE_USER
 };
 
 enum enum_session_state_type
