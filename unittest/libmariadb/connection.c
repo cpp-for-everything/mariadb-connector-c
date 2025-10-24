@@ -2264,6 +2264,7 @@ static int test_status_callback(MYSQL *my __attribute__((unused)))
   char reconnect= 1;
   char query[1024];
   struct st_callback data= {0, 0, 0,"", ""};
+  const char *pwd= "c7$T9h!q4L#v2Z8r";
 
   rc= mysql_optionsv(mysql, MARIADB_OPT_STATUS_CALLBACK, my_status_callback, &data);
   rc= mysql_optionsv(mysql, MYSQL_OPT_RECONNECT, &reconnect);
@@ -2294,7 +2295,7 @@ static int test_status_callback(MYSQL *my __attribute__((unused)))
   rc= mysql_query(mysql, query);
   check_mysql_rc(rc, mysql);
 
-  sprintf(query, "CREATE USER 'foo'@'%s' IDENTIFIED BY 'foo'", this_host);
+  sprintf(query, "CREATE USER 'foo'@'%s' IDENTIFIED BY '%s'", this_host, pwd);
   rc= mysql_query(mysql, query);
   check_mysql_rc(rc, mysql);
 
@@ -2302,7 +2303,7 @@ static int test_status_callback(MYSQL *my __attribute__((unused)))
   rc= mysql_query(mysql, query);
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_change_user(mysql, "foo", "foo", schema);
+  rc= mysql_change_user(mysql, "foo", pwd, schema);
   check_mysql_rc(rc, mysql);
 
   if (!data.change_user)
