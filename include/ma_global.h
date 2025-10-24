@@ -45,6 +45,9 @@
 #define _GNU_SOURCE 1
 #endif
 
+/* CONC-789: safe wrapper for enum */
+#define va_arg_enum(ap, enum_type) ((enum_type)va_arg(ap, int))
+
 /* The client defines this to avoid all thread code */
 #if defined(UNDEF_THREADS_HACK)
 #undef THREAD
