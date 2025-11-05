@@ -17,9 +17,10 @@ ELSEIF(WITH_SSL STREQUAL "GNUTLS")
   INCLUDE(${CC_SOURCE_DIR}/cmake/FindHogweed.cmake)
   IF (NOT SSL_LIBRARIES MATCHES "^.*\\.a$")
     SET(CRYPT_LIBS ${SSL_LIBRARIES})
-  IF (NETTLE_FOUND AND HOGWEED_FOUND)
-    SET(PARSEC_EXTRA_LIBS ${NETTLE_LIBRARIES} ${HOGWEED_LIBRARIES})
-  ENDIF()
+    MESSAGE("SET(CRYPT_LIBS ${SSL_LIBRARIES})")
+    IF (NETTLE_FOUND AND HOGWEED_FOUND)
+      SET(PARSEC_EXTRA_LIBS ${NETTLE_LIBRARIES} ${HOGWEED_LIBRARIES})
+    ENDIF()
   ENDIF()
 ELSE()
   UNSET(CRYPTO_PLUGIN)
@@ -38,7 +39,8 @@ REGISTER_PLUGIN(TARGET dialog
                 CONFIGURATIONS DYNAMIC STATIC OFF
                 DEFAULT DYNAMIC
                 SOURCES ${AUTH_DIR}/dialog.c
-                        ${CC_SOURCE_DIR}/libmariadb/get_password.c)
+                        ${CC_SOURCE_DIR}/libmariadb/get_password.c
+                LIBRARIES  ${CMAKE_DL_LIBS})
 
 
 # Crypto plugins

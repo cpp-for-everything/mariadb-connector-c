@@ -70,6 +70,7 @@ FUNCTION(REGISTER_PLUGIN)
         target_sources(${CC_PLUGIN_TARGET} PRIVATE
                        ${CC_BINARY_DIR}/win/${target}.rc ${CC_SOURCE_DIR}/plugins/plugin.def)
       endif()
+      message(STATUS "target_link_libraries(${CC_PLUGIN_TARGET} ${CC_PLUGIN_LIBRARIES})")
       target_link_libraries(${CC_PLUGIN_TARGET} ${CC_PLUGIN_LIBRARIES})
       set_target_properties(${CC_PLUGIN_TARGET} PROPERTIES PREFIX "")
       set_target_properties(${CC_PLUGIN_TARGET}
