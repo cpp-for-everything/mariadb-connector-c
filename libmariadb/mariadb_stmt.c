@@ -230,11 +230,41 @@ static int stmt_buffered_fetch(MYSQL_STMT *stmt, uchar **row)
 int mthd_stmt_read_all_rows(MYSQL_STMT *stmt)
 {
   MYSQL_DATA *result= &stmt->result;
-  MYSQL_ROWS *current, **pprevious;
+  MYSQL_ROWS *current, *last_row= NULL;
   ulong packet_len;
   unsigned char *p;
+  my_bool update_max= stmt->update_max_length;
+  const unsigned int field_count= stmt->field_count;
+  MYSQL_FIELD *fields= stmt->fields;
+  unsigned long row_count= 0;
 
-  pprevious= &result->data;
+  /* Initialize max_length for fixed-length fields once */
+  if (update_max)
+  {
+    unsigned int i;
+    for (i=0; i < field_count; i++)
+    {
+      int pack_len= mysql_ps_fetch_functions[fields[i].type].pack_len;
+      /* Only set for fixed-length types (pack_len >= 0) */
+      if (pack_len >= 0 && !fields[i].max_length)
+      {
+        if (fields[i].flags & ZEROFILL_FLAG)
+        {
+          fields[i].max_length= MAX(fields[i].length, mysql_ps_fetch_functions[fields[i].type].max_len-1);
+        }
+        else
+        {
+          fields[i].max_length= mysql_ps_fetch_functions[fields[i].type].max_len;
+          if (fields[i].flags & UNSIGNED_FLAG &&
+              fields[i].type != MYSQL_TYPE_INT24 &&
+              fields[i].type != MYSQL_TYPE_LONGLONG)
+          {
+            fields[i].max_length--;
+          }
+        }
+      }
+    }
+  }
 
   while ((packet_len = ma_net_safe_read(stmt->mysql)) != packet_error)
   {
@@ -248,13 +278,24 @@ int mthd_stmt_read_all_rows(MYSQL_STMT *stmt)
         return(1);
       }
       current->data= (MYSQL_ROW)(current + 1);
-      *pprevious= current;
-      pprevious= &current->next;
+      current->next= NULL;
+      current->length= packet_len;
+      
+      /* Link row using direct pointer instead of pointer-to-pointer */
+      if (last_row)
+        last_row->next= current;
+      else
+        result->data= current;
+      last_row= current;
 
       /* copy binary row, we will encode it during mysql_stmt_fetch */
       memcpy((char *)current->data, (char *)p, packet_len);
 
-      if (stmt->update_max_length)
+      /* Stop max_length calculation after 1000 rows - values typically stabilize by then */
+      if (update_max && ++row_count > 1000)
+        update_max= 0;
+
+      if (update_max)
       {
         uchar *null_ptr, bit_offset= 4;
         uchar *cp= p;
@@ -262,54 +303,37 @@ int mthd_stmt_read_all_rows(MYSQL_STMT *stmt)
 
         cp++; /* skip first byte */
         null_ptr= cp;
-        cp+= (stmt->field_count + 9) / 8;
+        cp+= (field_count + 9) / 8;
 
-        for (i=0; i < stmt->field_count; i++)
+        /* Only process variable-length fields (pack_len < 0) */
+        for (i=0; i < field_count; i++)
         {
+          int pack_len= mysql_ps_fetch_functions[fields[i].type].pack_len;
           if (!(*null_ptr & bit_offset))
           {
-            if (mysql_ps_fetch_functions[stmt->fields[i].type].pack_len < 0)
+            if (pack_len < 0)
             {
-              /* We need to calculate the sizes for date and time types */
+              /* Variable-length field: calculate size from data */
               size_t len= net_field_length(&cp);
-              switch(stmt->fields[i].type) {
+              switch(fields[i].type) {
               case MYSQL_TYPE_TIME:
               case MYSQL_TYPE_DATE:
               case MYSQL_TYPE_DATETIME:
               case MYSQL_TYPE_TIMESTAMP:
-                stmt->fields[i].max_length= mysql_ps_fetch_functions[stmt->fields[i].type].max_len;
+                fields[i].max_length= mysql_ps_fetch_functions[fields[i].type].max_len;
                 break;
               default:
-                if (len > stmt->fields[i].max_length)
-                  stmt->fields[i].max_length= (ulong)len;
+                /* String/blob types - track maximum */
+                if (len > fields[i].max_length)
+                  fields[i].max_length= (ulong)len;
                 break;
               }
               cp+= len;
             }
             else
             {
-              if (stmt->fields[i].flags & ZEROFILL_FLAG)
-              {
-                /* The -1 is because a ZEROFILL:ed field is always unsigned */
-                size_t len= MAX(stmt->fields[i].length, mysql_ps_fetch_functions[stmt->fields[i].type].max_len-1);
-                if (len > stmt->fields[i].max_length)
-                  stmt->fields[i].max_length= (unsigned long)len;
-              }
-              else if (!stmt->fields[i].max_length)
-              {
-                stmt->fields[i].max_length= mysql_ps_fetch_functions[stmt->fields[i].type].max_len;
-                if (stmt->fields[i].flags & UNSIGNED_FLAG &&
-                    stmt->fields[i].type != MYSQL_TYPE_INT24 &&
-                    stmt->fields[i].type != MYSQL_TYPE_LONGLONG)
-                {
-                  /*
-                    Unsigned integers has one character less than signed integers
-                    as '-' is counted as part of max_length
-                  */
-                  stmt->fields[i].max_length--;
-                }
-              }
-              cp+= mysql_ps_fetch_functions[stmt->fields[i].type].pack_len;
+              /* Fixed-length field: already initialized, just skip */
+              cp+= pack_len;
             }
           }
           if (!((bit_offset <<=1) & 255))
@@ -319,12 +343,10 @@ int mthd_stmt_read_all_rows(MYSQL_STMT *stmt)
           }
         }
       }
-      current->length= packet_len;
       result->rows++;
     } else  /* end of stream */
     {
       unsigned int last_status= stmt->mysql->server_status;
-      *pprevious= 0;
       /* sace status info */
       p++;
       stmt->upsert_status.warning_count= stmt->mysql->warning_count= uint2korr(p);
@@ -1688,7 +1710,7 @@ MYSQL_STMT * STDCALL mysql_stmt_init(MYSQL *mysql)
   stmt->prefetch_rows= 1;
 
   ma_init_alloc_root(&stmt->mem_root, 2048, 2048);
-  ma_init_alloc_root(&stmt->result.alloc, 4096, 4096);
+  ma_init_alloc_root(&stmt->result.alloc, 32768, 32768);
   ma_init_alloc_root(&((MADB_STMT_EXTENSION *)stmt->extension)->fields_ma_alloc_root, 2048, 2048);
 
   return(stmt);
