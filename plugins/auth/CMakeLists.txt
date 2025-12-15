@@ -30,6 +30,7 @@ REGISTER_PLUGIN(TARGET dialog
                 TYPE AUTH
                 CONFIGURATIONS DYNAMIC STATIC OFF
                 DEFAULT DYNAMIC
+                LIBRARIES ${CMAKE_DL_LIBS}
                 SOURCES ${CC_SOURCE_DIR}/plugins/auth/dialog.c
                         ${CC_SOURCE_DIR}/libmariadb/get_password.c)
 
