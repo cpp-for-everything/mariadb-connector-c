@@ -50,20 +50,27 @@ IF(CRYPTO_PLUGIN)
                     ${REF10_DIR}/verify.c ${REF10_DIR}/fe_frombytes.c ${REF10_DIR}/fe_sq2.c ${REF10_DIR}/ge_madd.c
                     ${REF10_DIR}/ge_p3_dbl.c ${REF10_DIR}/ge_tobytes.c ${REF10_DIR}/fe_invert.c ${REF10_DIR}/fe_sq.c
                     ${REF10_DIR}/ge_msub.c ${REF10_DIR}/ge_p3_tobytes.c ${REF10_DIR}/keypair.c)
-
+  add_library(client_ref10 OBJECT ${REF10_SOURCES})
+  set_target_properties(client_ref10 PROPERTIES
+     POSITION_INDEPENDENT_CODE ON
+     EXCLUDE_FROM_ALL ON
+     C_VISIBILITY_PRESET hidden
+     VISIBILITY_INLINES_HIDDEN ON
+     )
+  target_compile_definitions(client_ref10 PRIVATE -DMYSQL_CLIENT=1)
+  target_include_directories(client_ref10 PRIVATE ${REF10_DIR})
   REGISTER_PLUGIN(TARGET client_ed25519
                 TYPE AUTH
                 CONFIGURATIONS DYNAMIC STATIC OFF
                 DEFAULT DYNAMIC
                 SOURCES ${CC_SOURCE_DIR}/plugins/auth/ed25519.c 
-                        ${REF10_SOURCES}
                         ${CRYPT_SOURCE}
                 INCLUDES ${REF10_DIR}
-                LIBRARIES ${CRYPT_LIBS}
+                LIBRARIES ${CRYPT_LIBS} client_ref10
                 COMPILE_OPTIONS -DMYSQL_CLIENT=1)
   IF(MSVC)
      # Silence conversion (integer truncation) warnings from reference code
-     SET_SOURCE_FILES_PROPERTIES(${REF10_SOURCES} PROPERTY COMPILE_FLAGS "-DMYSQL_CLIENT=1 /wd4244 /wd4146")
+     SET_SOURCE_FILES_PROPERTIES(${REF10_SOURCES} PROPERTY COMPILE_FLAGS "/wd4244 /wd4146")
   ENDIF()
 
   IF(CMAKE_C_COMPILER_ID MATCHES "GNU" AND CMAKE_C_COMPILER_VERSION LESS 11
