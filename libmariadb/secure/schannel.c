@@ -248,11 +248,17 @@ static int ma_tls_set_client_certs(MARIADB_TLS *ctls, client_cert_handle *cert_h
 void *ma_tls_init(MYSQL *mysql)
 {
   SC_CTX *sctx = (SC_CTX *)LocalAlloc(LMEM_ZEROINIT, sizeof(SC_CTX));
+  assert(mysql->net.pvio);
+  PVIO_METHODS* methods= mysql->net.pvio->methods;
   if (sctx)
   {
     SecInvalidateHandle(&sctx->CredHdl);
     SecInvalidateHandle(&sctx->hCtxt);
   }
+
+  sctx->async_methods= *methods;
+  sctx->async_methods.read= methods->async_read;
+  sctx->async_methods.write= methods->async_write;
   return sctx;
 }
 /* }}} */
@@ -680,6 +686,34 @@ ssize_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
   }
   return length;
 }
+
+
+/*
+  For the async TLS implementation, use the trick of
+  temporarily exchanging the pvio methods with the async versions.
+  They will return to the caller whenever read/write operations
+  would be blocked.
+*/
+ssize_t ma_tls_read_async(MARIADB_TLS* ctls, const uchar* buffer, size_t length)
+{
+  SC_CTX* sctx= (SC_CTX*)ctls->ssl;
+  PVIO_METHODS* orig_methods= ctls->pvio->methods;
+  ctls->pvio->methods= &sctx->async_methods;
+  ssize_t ret= ma_tls_read(ctls, buffer, length);
+  ctls->pvio->methods= orig_methods;
+  return ret;
+}
+
+ssize_t ma_tls_write_async(MARIADB_TLS* ctls, const uchar* buffer, size_t length)
+{
+  SC_CTX* sctx= (SC_CTX*)ctls->ssl;
+  PVIO_METHODS* orig_methods= ctls->pvio->methods;
+  ctls->pvio->methods= &sctx->async_methods;
+  ssize_t ret = ma_tls_write(ctls, buffer, length);
+  ctls->pvio->methods= orig_methods;
+  return ret;
+}
+
 
 /* {{{ my_bool ma_tls_close(MARIADB_PVIO *pvio) */
 my_bool ma_tls_close(MARIADB_TLS *ctls)
