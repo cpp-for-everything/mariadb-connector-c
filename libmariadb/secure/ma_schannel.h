@@ -68,7 +68,7 @@ struct st_schannel {
   /* Cached data from the last read/decrypt call.*/
   SecBuffer extraBuf; /* encrypted data read from server. */
   SecBuffer dataBuf;  /* decrypted but still unread data from server.*/
-
+  PVIO_METHODS async_methods; /* used in ma_tls_async_read/write */
 };
 
 typedef struct st_schannel SC_CTX;
