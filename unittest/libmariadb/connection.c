@@ -2386,13 +2386,13 @@ static int test_parsec(MYSQL *my)
     diag("server doesn't support parsec plugin");
     return SKIP;
   }
-  sprintf(query, "CREATE OR REPLACE USER test_parsec@'%s' IDENTIFIED VIA parsec using PASSWORD('123')", this_host ? this_host : "localhost");
+  sprintf(query, "CREATE OR REPLACE USER test_parsec@'%s' IDENTIFIED VIA parsec using PASSWORD('MySuper_1Passw@ord')", this_host ? this_host : "localhost");
   rc= mysql_query(my, query);
   check_mysql_rc(rc, my);
 
   mysql= mysql_init(NULL);
   mysql_options(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify);
-  if (!my_test_connect(mysql, hostname, "test_parsec", "123", NULL, port, socketname, 0, 0))
+  if (!my_test_connect(mysql, hostname, "test_parsec", "MySuper_1Passw@ord", NULL, port, socketname, 0, 0))
   {
     diag("Connection failed. Error: %s", mysql_error(mysql));
     mysql_close(mysql);
