@@ -134,7 +134,7 @@ SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DDBUG_OFF")
 SET(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} -DDBUG_OFF")
 SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -DDBUG_OFF")
 
-IF(CMAKE_COMPILER_IS_GNUCC)
+IF(CMAKE_C_COMPILER_ID MATCHES "GNU")
   INCLUDE(CheckCCompilerFlag)
   SET(GCC_FLAGS -Wunused -Wlogical-op -Wno-uninitialized  -Wall -Wextra -Wformat-security -Wno-init-self -Wwrite-strings -Wshift-count-overflow -Wdeclaration-after-statement -Wno-undef -Wno-unknown-pragmas -Wno-stringop-truncation)
   FOREACH(GCC_FLAG ${GCC_FLAGS})
