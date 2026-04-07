@@ -1,5 +1,5 @@
 IF (WITH_CURL)
-  INCLUDE(FindCURL)
+  FIND_PACKAGE(CURL)
   IF(CURL_FOUND)
 
     add_compile_definitions(HAVE_REMOTEIO=1)
