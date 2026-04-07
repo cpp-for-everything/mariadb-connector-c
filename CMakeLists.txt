@@ -126,7 +126,7 @@ ELSE()
   IF(WITH_EMBEDDED_SERVER)
     add_compile_definitions(HAVE_EMBEDDED)
   ENDIF()
-ENDIF(NOT IS_SUBPROJECT)
+ENDIF()
 
 # Disable dbug information for release builds
 SET(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -DDBUG_OFF")
