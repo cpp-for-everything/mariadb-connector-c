@@ -58,7 +58,7 @@ if (ICONV_FOUND)
     return 0;
   }
 " ICONV_SECOND_ARGUMENT_IS_CONST )
-  ADD_DEFINITIONS(-DHAVE_ICONV)
+  add_compile_definitions(HAVE_ICONV)
 endif (ICONV_FOUND)
 
 set (CMAKE_REQUIRED_INCLUDES)

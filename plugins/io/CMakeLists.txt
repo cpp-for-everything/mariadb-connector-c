@@ -2,7 +2,7 @@ IF (WITH_CURL)
   INCLUDE(FindCURL)
   IF(CURL_FOUND)
 
-    ADD_DEFINITIONS(-DHAVE_REMOTEIO=1)
+    add_compile_definitions(HAVE_REMOTEIO=1)
     #remote io plugin
     REGISTER_PLUGIN(TARGET remote_io
                   TYPE REMOTEIO
