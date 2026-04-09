@@ -32,12 +32,12 @@ INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/include
                     ${CC_BINARY_DIR}/include
                     ${CC_SOURCE_DIR}/unittest/mytap
                     ${CC_SOURCE_DIR}/unittest/libmariadb)
-ADD_DEFINITIONS(-DLIBMARIADB)
+add_compile_definitions(LIBMARIADB)
 
 SET(API_TESTS "bulk1" "performance" "basic-t" "fetch" "charset" "logs" "cursor" "errors" "view" "ps" "ps_bugs" "sp" "result" "connection" "misc" "ps_new" "thread" "features-10_2" "rpl_api")
 
 IF($ENV{TRAVIS})
-  ADD_DEFINITIONS("-DHAVE_TRAVIS=1")
+  add_compile_definitions(HAVE_TRAVIS=1)
 ENDIF()
 
 IF(WITH_DYNCOL)
@@ -57,7 +57,7 @@ IF(WITH_SSL)
     IF(WIN32)
       STRING(REPLACE "\\" "\\\\" CERT_PATH ${CERT_PATH})
     ENDIF()
-    ADD_DEFINITIONS(-DCERT_PATH="${CERT_PATH}")
+    add_compile_definitions(CERT_PATH="${CERT_PATH}")
   ENDIF()
 ENDIF()
 
